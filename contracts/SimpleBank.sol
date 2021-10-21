@@ -27,14 +27,18 @@ contract SimpleBank {
      */
 
     // Add an argument for this event, an accountAddress
-    event LogEnrolled(address _from);
+    event LogEnrolled(address accountAddress);
 
     // Add 2 arguments for this event, an accountAddress and an amount
-    event LogDepositMade(address _from, uint256 _amount);
+    event LogDepositMade(address indexed accountAddress, uint256 amount);
 
     // Create an event called LogWithdrawal
     // Hint: it should take 3 arguments: an accountAddress, withdrawAmount and a newBalance
-    event LogWithdrawal(address _from, uint256 _amount, uint256 _newBalance);
+    event LogWithdrawal(
+        address indexed accountAddress,
+        uint256 withdrawAmount,
+        uint256 newBalance
+    );
 
     /* Functions
      */
@@ -56,7 +60,7 @@ contract SimpleBank {
         // 1. A SPECIAL KEYWORD prevents function from editing state variables;
         //    allows function to run locally/off blockchain
         // 2. Get the balance of the sender of this transaction
-        return address(owner).balance;
+        return balances[msg.sender];
     }
 
     /// @notice Enroll a customer with the bank
@@ -64,10 +68,6 @@ contract SimpleBank {
     // Emit the appropriate event
     function enroll() public returns (bool) {
         // 1. enroll of the sender of this transaction
-        require(
-            enrolled[msg.sender] == false,
-            "Only accounts not enrolled can call this function."
-        );
         enrolled[msg.sender] = true;
         emit LogEnrolled(msg.sender);
         return enrolled[msg.sender];
@@ -82,14 +82,10 @@ contract SimpleBank {
         //    accessed from of the global variable `msg`
         // 4. Emit the appropriate event associated with this function
         // 5. return the balance of sndr of this transaction
-        require(msg.value > 0);
-        require(
-            enrolled[msg.sender] == true,
-            "Only enrolled accounts can call this function."
-        );
-
+        require(enrolled[msg.sender] == true, "Not enrolled!");
+        require(msg.value > 0, "Not valid amount");
         balances[msg.sender] += msg.value;
-        emit LogDepositMade(msg.sender, balances[msg.sender]);
+        emit LogDepositMade(msg.sender, msg.value);
         return balances[msg.sender];
     }
 
@@ -106,14 +102,11 @@ contract SimpleBank {
         // 2. Transfer Eth to the sender and decrement the withdrawal amount from
         //    sender's balance
         // 3. Emit the appropriate event for this message
-        require(balances[msg.sender] >= withdrawAmount);
 
+        require(withdrawAmount <= balances[msg.sender], "Insufficient amount");
         balances[msg.sender] -= withdrawAmount;
-
         payable(msg.sender).transfer(withdrawAmount);
-
         emit LogWithdrawal(msg.sender, withdrawAmount, balances[msg.sender]);
-
         return balances[msg.sender];
     }
 }
